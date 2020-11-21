@@ -19,8 +19,8 @@ module fpu #(
     parameter float_mul = 1'd1;
 
     parameter EXPONENT = 8;
-    parameter FRACTION = 38;
-    // original fraction bit (23) + 01. bit (2) + signed bit (1) + (12)
+    parameter FRACTION = 49;
+    // original fraction bit (23) + 01. bit (2) + signed bit (1) + (23)
 
     // wires and register
     reg [DATA_WIDTH-1:0]    o_data_r, o_data_w;
@@ -28,13 +28,13 @@ module fpu #(
 
     wire [EXPONENT-1:0]         num_1_exp;
     wire [EXPONENT-1:0]         num_2_exp;
-    wire signed [FRACTION-1:0]  num_1_fra_0;
-    reg signed [FRACTION-1:0]  num_1_fra_1;
-    wire signed [FRACTION-1:0]  num_2_fra_0;
-    reg signed [FRACTION-1:0]  num_2_fra_1;
+    wire [FRACTION-1:0]  num_1_fra_0;
+    reg  [FRACTION-1:0]  num_1_fra_1;
+    wire [FRACTION-1:0]  num_2_fra_0;
+    reg  [FRACTION-1:0]  num_2_fra_1;
 
     reg [EXPONENT-1:0]         num_exp;
-    reg signed [FRACTION-1:0]  num_fra;
+    reg [FRACTION-1:0]  num_fra;
     reg rounding, sticky;
 
     integer i;
@@ -45,8 +45,8 @@ module fpu #(
 
     assign num_1_exp = i_data_a[30:23];
     assign num_2_exp = i_data_b[30:23];
-    assign num_1_fra_0 = {3'b001, i_data_a[22:0], 12'b00};
-    assign num_2_fra_0 = {3'b001, i_data_b[22:0], 12'b00};
+    assign num_1_fra_0 = {3'b001, i_data_a[22:0], 23'b00};
+    assign num_2_fra_0 = {3'b001, i_data_b[22:0], 23'b00};
 
     // combinational part
     always @(*) begin
@@ -85,7 +85,7 @@ module fpu #(
                     // normalize
                     o_data_w[31] = num_fra[FRACTION-1];
                     if (num_fra[FRACTION-2] == 1'b1) begin
-                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-3:11];
+                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-3:22];
                         o_data_w[30:23] = num_exp + 1;
                     end else if (num_fra[FRACTION-3] == 1'b0) begin
                         i = 1;
@@ -94,10 +94,10 @@ module fpu #(
                             num_fra = num_fra << 1;
                             num_exp = num_exp - 1;
                         end
-                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-4:10];
+                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-4:21];
                         o_data_w[30:23] = num_exp;
                     end else begin
-                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-4:10];
+                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-4:21];
                         o_data_w[30:23] = num_exp;
                     end
 
@@ -110,6 +110,39 @@ module fpu #(
 
                     o_valid_w = 1;
                 end
+
+                float_mul: begin
+                    // exponents addition
+                    // (exp_1 + bias) + (exp_2 + bias) - bias = (exp_total + bias)
+                    num_exp = num_1_exp + num_2_exp - 7'h7f;
+                    o_data_w[30:23] = num_exp;
+
+                    // significands multiplication
+                    num_fra = num_1_fra_0[FRACTION-1:FRACTION-26] * num_2_fra_0[FRACTION-1:FRACTION-26];
+
+                    // normalize
+                    if (num_fra[FRACTION-2:FRACTION-3] == 2'b10) begin
+                        // need to be normalized
+                        {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-3:FRACTION-27];
+                        o_data_w[30:23] = o_data_w[30:23] + 1;
+                    end else begin
+                        // without normalizing
+                         {o_data_w[22:0], rounding, sticky} = num_fra[FRACTION-4:FRACTION-28];
+                    end
+                    
+                    // rounding
+                        if (rounding == 1'b1) begin
+                            if (!sticky == 1'b0 || !o_data_w[0] == 0) begin
+                                o_data_w[22:0] = o_data_w[22:0] + 1;
+                            end
+                        end
+                    
+                    // sign determination
+                    o_data_w[DATA_WIDTH-1] = (i_data_a[DATA_WIDTH-1] ^ i_data_b[DATA_WIDTH-1]);
+
+                    o_valid_w = 1;
+                end
+
                 default: begin
                     o_valid_w = 1;
                 end
