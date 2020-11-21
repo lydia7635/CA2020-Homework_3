@@ -68,14 +68,70 @@ module cpu #( // Do not modify interface
 
 endmodule
 
+module mux #(
+    parameter DATA_W = 64
+)(
+    input  [ DATA_W-1 : 0 ] i_data_0,
+    input  [ DATA_W-1 : 0 ] i_data_1,
+    input                   control,
+    output [ DATA_W-1 : 0 ] o_data
+);
+
+    if (control) begin
+        assign o_data = i_data_1;
+    end else begin
+        assign o_data = i_data_0;
+    end
+
+endmodule
+
+module alu #(
+    parameter DATA_W = 64,
+    parameter ALU_CTRL_W = 4
+)(
+    input  [ DATA_W-1 : 0 ]     i_data_1,
+    input  [ DATA_W-1 : 0 ]     i_data_2,
+    input  [ ALU_CTRL_W-1 : 0 ] i_alu_ctrl,
+    output [ DATA_W-1 : 0 ]     o_result,
+    output                      o_zero
+);
+    // parameters
+    parameter Add = 4'b0010;
+    parameter Sub = 4'b0110;
+    parameter And = 4'b0000;
+    parameter Or  = 4'b0001;
+    parameter Xor = 4'b0101;
+
+    case (i_alu_ctrl)
+        Add: begin
+            o_result = i_data_1 + i_data_2;
+        end
+        Sub: begin
+            o_result = i_data_1 - i_data_2;
+        end
+        And: begin
+            o_result = i_data_1 & i_data_2;            
+        end
+        Or: begin
+            o_result = i_data_1 | i_data_2;            
+        end
+        Xor: begin
+            o_result = i_data_1 ^ i_data_2;
+        end
+        default: begin
+            o_result = 0;
+        end
+    endcase
+endmodule
+
 module program_counter #(
     parameter ADDR_W = 64
 )(
-    input                 i_rst_n,
-    input  [ ADDR_W-1:0 ] i_addr,
-    input                 i_inst_mem_valid, // if true, then o_valid = false
-    output [ ADDR_W-1:0 ] o_addr,
-    output                o_valid
+    input                   i_rst_n,
+    input  [ ADDR_W-1 : 0 ] i_addr,
+    input                   i_inst_mem_valid, // if true, then o_valid = false
+    output [ ADDR_W-1 : 0 ] o_addr,
+    output                  o_valid
 );
     reg [ ADDR_W-1 : 0 ] PC;
     reg o_valid_r;
@@ -99,10 +155,12 @@ module program_counter #(
 
 endmodule
 
-/*module registers #(
+module registers #(
     parameter REG_ADDR_W = 5,
     parameter DATA_W = 64
 )(
+    input                       i_clk,
+    input                       i_rst_n,
     input [ REG_ADDR_W-1 : 0 ]  i_read_reg_1,
     input [ REG_ADDR_W-1 : 0 ]  i_read_reg_2,
     input [ REG_ADDR_W-1 : 0 ]  i_write_reg,
@@ -115,27 +173,53 @@ endmodule
 
     // parameters
     parameter REG_NUM = 32;
+    
+    // registers and wires
+    reg [ DATA_W-1 : 0 ] register [ 0 : REG_NUM-1 ];
     integer i;
 
-    reg [ DATA_W-1 : 0 ] register [ 0 : REG_NUM-1 ];
+    // continuous assignment
+    assign o_read_data_1 = register[i_read_reg_1];
+    assign o_read_data_2 = register[i_read_reg_2];
 
+    // combinational part
+    always @(*) begin
+        if(i_write_valid) begin
+            register[i_write_reg] = i_write_data;
+        end 
+    end
 
-    initial begin
-        for (i = 0; i < REG_NUM; i++) begin
-            register[i] = 0;
+    // sequential part
+    always @(posedge i_clk or negedge i_rst_n) begin
+        if(~i_rst_n) begin
+            for (i = 0; i < REG_NUM; i++) begin
+                register[i] = 0;
+            end
         end
     end
 
-endmodule*/
+endmodule
+
+module imm_gen #(
+    parameter DATA_IN_W  = 32,
+    parameter DATA_OUT_W = 64
+)(
+    input  [ DATA_IN_W-1 : 0 ]  i_instruction,
+    output [ DATA_OUT_W-1 : 0 ] o_data    
+);
+
+    assign o_data = { 32'hffffffff, i_instruction };
+
+endmodule
 
 module controller #(
     parameter OPCODE_W = 7
 )(
-    input  i_clk,
-    input  i_rst_n,
-    input [ OPCODE_W-1 : 0 ] i_inst,
-    input  i_valid,
-    output o_finish
+    input                     i_clk,
+    input                     i_rst_n,
+    input  [ OPCODE_W-1 : 0 ] i_inst,
+    input                     i_valid,
+    output                    o_finish
 );
 
     // parameter defined
