@@ -2,3 +2,5 @@ ALU/a.out
 ALU/alu.vcd
 FPU/a.out
 FPU/fpu.vcd
+CPU/a.out
+CPU/cpu.vcd
