@@ -457,7 +457,7 @@ module registers #(
     end
 
     always @(*) begin
-        if(i_RegWrite & i_valid_write) begin
+        if(i_RegWrite & i_valid_write & i_write_reg != 0) begin
             register[i_write_reg] = i_write_data;
         end 
     end
