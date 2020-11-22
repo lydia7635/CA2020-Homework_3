@@ -342,7 +342,7 @@ module alu #(
             endcase
             o_zero_r = (o_result_r == 0)? 1 : 0;
             o_valid_r = 1;
-        end else o_valid_r = 0;
+        end //else o_valid_r = 0;
     end
 
     always @(negedge i_rst_n) begin
@@ -368,14 +368,12 @@ module program_counter #(
     assign o_addr  = pc;
     assign o_valid = o_valid_r;
 
-    always @(*) begin
-        pc = i_addr;
-    end
-
     // combinational part
     always @(*) begin
         if (cs == 13) begin
             o_valid_w = 1;
+        end else if (cs == 12) begin
+            pc = i_addr;
         end else begin
             o_valid_w = 0;
         end
@@ -440,12 +438,16 @@ module registers #(
     reg [ DATA_W-1 : 0 ] o_read_data_1_r;
     reg [ DATA_W-1 : 0 ] o_read_data_2_r;
     reg                  o_valid_result_r;
+
+    reg  [ REG_ADDR_W-1 : 0 ] i_write_reg_r;
+    wire [ REG_ADDR_W-1 : 0 ] i_write_reg_w;
     integer i;
 
     // continuous assignment
     assign o_read_data_1 = o_read_data_1_r;
     assign o_read_data_2 = o_read_data_2_r;
     assign o_valid_result = o_valid_result_r;
+    assign i_write_reg_w = i_write_reg_r;
 
     // combinational part
     always @(*) begin
@@ -457,9 +459,18 @@ module registers #(
     end
 
     always @(*) begin
-        if(i_RegWrite & i_valid_write & i_write_reg != 0) begin
-            register[i_write_reg] = i_write_data;
+        if(i_RegWrite & i_valid_write & (i_write_reg_r != 0)) begin
+            register[i_write_reg_r] = i_write_data;
         end 
+    end
+
+    always @(*) begin
+        if(i_valid_inst_mem) begin
+            i_write_reg_r = i_write_reg;
+        end else begin
+            i_write_reg_r = i_write_reg_w;
+        end
+    
     end
 
     // sequential part
