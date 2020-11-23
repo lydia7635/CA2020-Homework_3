@@ -464,6 +464,8 @@ module registers #(
         end 
     end
 
+    
+    // sequential part
     always @(*) begin
         if(i_valid_inst_mem) begin
             i_write_reg_r = i_write_reg;
@@ -472,8 +474,7 @@ module registers #(
         end
     
     end
-
-    // sequential part
+    
     always @(negedge i_rst_n) begin
         o_valid_result_r = 0;
         for (i = 0; i < REG_NUM; i++) begin

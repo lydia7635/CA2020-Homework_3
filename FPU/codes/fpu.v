@@ -26,15 +26,15 @@ module fpu #(
     reg [DATA_WIDTH-1:0]    o_data_r, o_data_w;
     reg                     o_valid_r, o_valid_w;
 
-    wire [EXPONENT-1:0]         num_1_exp;
-    wire [EXPONENT-1:0]         num_2_exp;
-    wire [FRACTION-1:0]  num_1_fra_0;
-    reg  [FRACTION-1:0]  num_1_fra_1;
-    wire [FRACTION-1:0]  num_2_fra_0;
-    reg  [FRACTION-1:0]  num_2_fra_1;
+    wire [EXPONENT-1:0]     num_1_exp;
+    wire [EXPONENT-1:0]     num_2_exp;
+    wire [FRACTION-1:0]     num_1_fra_0;
+    reg  [FRACTION-1:0]     num_1_fra_1;
+    wire [FRACTION-1:0]     num_2_fra_0;
+    reg  [FRACTION-1:0]     num_2_fra_1;
 
-    reg [EXPONENT-1:0]         num_exp;
-    reg [FRACTION-1:0]  num_fra;
+    reg [EXPONENT-1:0]      num_exp;
+    reg [FRACTION-1:0]      num_fra;
     reg rounding, sticky;
 
     integer i;
